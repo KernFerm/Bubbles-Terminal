@@ -31,6 +31,10 @@ internal sealed class SettingsWindow : Window
     private readonly TextBox _profilePathTextBox = new() { Width = 360 };
     private readonly TextBox _profileArgsTextBox = new() { Width = 360 };
     private readonly TextBox _profileStartDirectoryTextBox = new() { Width = 360 };
+    private readonly TextBox _profileStartupCommandTextBox = new() { Width = 360 };
+    private readonly TextBox _profileTitleTemplateTextBox = new() { Width = 360 };
+    private readonly TextBox _profileIconGlyphTextBox = new() { Width = 120, Text = "\uE756" };
+    private readonly TextBox _profileEnvironmentTextBox = new() { Width = 360, AcceptsReturn = true, Height = 84, TextWrapping = TextWrapping.Wrap };
     private readonly ListBox _customProfilesList = new() { Height = 130 };
     private readonly TextBox _snippetNameTextBox = new() { Width = 220 };
     private readonly TextBox _snippetCommandTextBox = new() { Width = 360 };
@@ -89,6 +93,10 @@ internal sealed class SettingsWindow : Window
         panel.Children.Add(Row("Executable", _profilePathTextBox, Button("Browse", BrowseProfileExecutable)));
         panel.Children.Add(Row("Arguments", _profileArgsTextBox));
         panel.Children.Add(Row("Start directory", _profileStartDirectoryTextBox));
+        panel.Children.Add(Row("Startup command", _profileStartupCommandTextBox));
+        panel.Children.Add(Row("Tab title", _profileTitleTemplateTextBox));
+        panel.Children.Add(Row("Icon glyph", _profileIconGlyphTextBox));
+        panel.Children.Add(Row("Env (KEY=VALUE)", _profileEnvironmentTextBox));
         panel.Children.Add(_profileRunAsAdministratorCheckBox);
         panel.Children.Add(ButtonRow(Button("Add Profile", AddProfile), Button("Remove Selected Profile", RemoveSelectedProfile)));
 
@@ -143,6 +151,10 @@ internal sealed class SettingsWindow : Window
             _profilePathTextBox,
             _profileArgsTextBox,
             _profileStartDirectoryTextBox,
+            _profileStartupCommandTextBox,
+            _profileTitleTemplateTextBox,
+            _profileIconGlyphTextBox,
+            _profileEnvironmentTextBox,
             _snippetNameTextBox,
             _snippetCommandTextBox
         })
@@ -329,9 +341,13 @@ internal sealed class SettingsWindow : Window
                 ? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)
                 : _profileStartDirectoryTextBox.Text.Trim(),
             RunAsAdministrator: _profileRunAsAdministratorCheckBox.IsChecked == true,
-            IconGlyph: "\uE756",
-            ColorKey: "Custom"));
+            IconGlyph: string.IsNullOrWhiteSpace(_profileIconGlyphTextBox.Text) ? "\uE756" : _profileIconGlyphTextBox.Text.Trim(),
+            ColorKey: "Custom",
+            StartupCommand: _profileStartupCommandTextBox.Text.Trim(),
+            TabTitleTemplate: _profileTitleTemplateTextBox.Text.Trim(),
+            EnvironmentOverrides: ParseEnvironmentOverrides(_profileEnvironmentTextBox.Text)));
         RefreshLists();
+        ClearProfileInputs();
     }
 
     private void ApplyThemePreset(string? preset)
@@ -469,5 +485,40 @@ internal sealed class SettingsWindow : Window
         target.CustomProfiles = source.CustomProfiles;
         target.Snippets = source.Snippets;
         target.LastWorkspace = source.LastWorkspace;
+    }
+
+    private static IDictionary<string, string> ParseEnvironmentOverrides(string text)
+    {
+        var values = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var rawLine in text.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            var separatorIndex = rawLine.IndexOf('=');
+            if (separatorIndex <= 0)
+            {
+                continue;
+            }
+
+            var key = rawLine[..separatorIndex].Trim();
+            var value = rawLine[(separatorIndex + 1)..].Trim();
+            if (!string.IsNullOrWhiteSpace(key))
+            {
+                values[key] = value;
+            }
+        }
+
+        return values;
+    }
+
+    private void ClearProfileInputs()
+    {
+        _profileNameTextBox.Clear();
+        _profilePathTextBox.Clear();
+        _profileArgsTextBox.Clear();
+        _profileStartDirectoryTextBox.Clear();
+        _profileStartupCommandTextBox.Clear();
+        _profileTitleTemplateTextBox.Clear();
+        _profileEnvironmentTextBox.Clear();
+        _profileRunAsAdministratorCheckBox.IsChecked = false;
+        _profileIconGlyphTextBox.Text = "\uE756";
     }
 }

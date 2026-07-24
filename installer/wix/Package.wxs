@@ -3,7 +3,7 @@
   <Package
     Name="Bubbles CMD"
     Manufacturer="BubblesTheDev"
-    Version="0.0.3"
+    Version="0.0.4"
     UpgradeCode="33C164F7-6F73-4FA7-B6E9-5202E69A43F7"
     Scope="perUser">
 

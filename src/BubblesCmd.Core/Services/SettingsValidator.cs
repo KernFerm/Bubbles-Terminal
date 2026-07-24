@@ -51,6 +51,11 @@ public sealed class SettingsValidator
             {
                 errors.Add($"Custom profile '{profile.DisplayName}' points to a missing executable.");
             }
+
+            if (profile.EnvironmentOverrides.Any(pair => string.IsNullOrWhiteSpace(pair.Key)))
+            {
+                errors.Add($"Custom profile '{profile.DisplayName}' contains an environment variable with a blank name.");
+            }
         }
 
         foreach (var snippet in settings.Snippets)

@@ -5,8 +5,16 @@ namespace BubblesCmd.Core.Services;
 
 public sealed class CommandDiscoveryService
 {
+    private readonly Dictionary<string, IReadOnlyList<DiscoveredCommand>> _cache = new(StringComparer.OrdinalIgnoreCase);
+
     public IReadOnlyList<DiscoveredCommand> DiscoverForProfile(ShellProfile profile, int limit = 500)
     {
+        var cacheKey = $"{profile.Id}|{profile.ExecutablePath}|{profile.Arguments}|{limit}";
+        if (_cache.TryGetValue(cacheKey, out var cached))
+        {
+            return cached;
+        }
+
         var commands = new List<DiscoveredCommand>();
         if (IsCmdProfile(profile))
         {
@@ -23,12 +31,40 @@ public sealed class CommandDiscoveryService
             commands.AddRange(DiscoverPowerShellCommands(profile, limit));
         }
 
-        return commands
+        var results = commands
             .GroupBy(command => $"{command.ShellKind}|{command.CommandType}|{command.Name}", StringComparer.OrdinalIgnoreCase)
             .Select(group => group.First())
             .OrderBy(command => CommandPriority(command))
             .ThenBy(command => command.Name, StringComparer.OrdinalIgnoreCase)
             .Take(limit)
+            .ToArray();
+
+        _cache[cacheKey] = results;
+        return results;
+    }
+
+    public IReadOnlyList<DiscoveredCommand> SearchCommands(
+        IEnumerable<DiscoveredCommand> commands,
+        string search,
+        int limit = 250)
+    {
+        var query = search.Trim();
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            return commands.Take(limit).ToArray();
+        }
+
+        return commands
+            .Select(command => new
+            {
+                Command = command,
+                Score = ScoreCommand(command, query)
+            })
+            .Where(result => result.Score > 0)
+            .OrderByDescending(result => result.Score)
+            .ThenBy(result => result.Command.Name, StringComparer.OrdinalIgnoreCase)
+            .Take(limit)
+            .Select(result => result.Command)
             .ToArray();
     }
 
@@ -161,7 +197,8 @@ public sealed class CommandDiscoveryService
                 columns[0],
                 columns[2],
                 string.IsNullOrWhiteSpace(columns[1]) ? "PowerShell" : columns[1],
-                "PowerShell"));
+                "PowerShell",
+                columns[2]));
         }
 
         return commands;
@@ -243,7 +280,8 @@ public sealed class CommandDiscoveryService
                 name.ToLowerInvariant(),
                 "cmd.exe help",
                 "CMD built-in",
-                "cmd"));
+                "cmd",
+                rawLine.Trim()));
         }
 
         return commands
@@ -265,5 +303,53 @@ public sealed class CommandDiscoveryService
         }
 
         return 2;
+    }
+
+    private static int ScoreCommand(DiscoveredCommand command, string query)
+    {
+        if (command.Name.Equals(query, StringComparison.OrdinalIgnoreCase))
+        {
+            return 1000;
+        }
+
+        if (command.Name.StartsWith(query, StringComparison.OrdinalIgnoreCase))
+        {
+            return 800;
+        }
+
+        if (command.Name.Contains(query, StringComparison.OrdinalIgnoreCase))
+        {
+            return 500;
+        }
+
+        if (command.CommandType.Contains(query, StringComparison.OrdinalIgnoreCase))
+        {
+            return 250;
+        }
+
+        if (command.Source.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+            command.Description.Contains(query, StringComparison.OrdinalIgnoreCase))
+        {
+            return 150;
+        }
+
+        return IsFuzzyMatch(command.Name, query) ? 100 : 0;
+    }
+
+    private static bool IsFuzzyMatch(string candidate, string query)
+    {
+        var candidateIndex = 0;
+        foreach (var character in query)
+        {
+            var foundIndex = candidate[candidateIndex..].IndexOf(character.ToString(), StringComparison.OrdinalIgnoreCase);
+            if (foundIndex < 0)
+            {
+                return false;
+            }
+
+            candidateIndex += foundIndex + 1;
+        }
+
+        return true;
     }
 }

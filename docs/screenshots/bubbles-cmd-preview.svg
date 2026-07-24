@@ -36,5 +36,5 @@
   <text x="68" y="426" fill="#5fc9b5" font-family="Cascadia Mono, Consolas, monospace" font-size="24">On branch main</text>
   <text x="68" y="470" fill="#58b9ff" font-family="Cascadia Mono, Consolas, monospace" font-size="24">nothing to commit, working tree clean</text>
   <rect x="34" y="660" width="1212" height="36" rx="18" fill="#16212c"/>
-  <text x="58" y="684" fill="#9aaec2" font-family="Segoe UI, sans-serif" font-size="16">Bubbles CMD 0.0.3 | Ctrl+Shift+1 PowerShell | Ctrl+Shift+2 Command Prompt | Ctrl+Shift+P Palette</text>
+  <text x="58" y="684" fill="#9aaec2" font-family="Segoe UI, sans-serif" font-size="16">Bubbles CMD 0.0.4 | Ctrl+Shift+1 PowerShell | Ctrl+Shift+2 Command Prompt | Ctrl+Shift+P Palette</text>
 </svg>

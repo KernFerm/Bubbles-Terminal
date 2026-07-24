@@ -1,6 +1,6 @@
 # Bubbles CMD Installer
 
-This folder contains installer scaffolding for Bubbles CMD `0.0.3`.
+This folder contains installer scaffolding for Bubbles CMD `0.0.4`.
 
 ## Option 1: Inno Setup Wizard
 
@@ -30,7 +30,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-msi.ps1
 The MSI is created at:
 
 ```text
-artifacts\installer\bubbles-cmd-0.0.3-win-x64.msi
+artifacts\installer\bubbles-cmd-0.0.4-win-x64.msi
 ```
 
 The MSI installs per-user to `%LOCALAPPDATA%\Programs\Bubbles CMD`, creates Start Menu and Desktop shortcuts, supports uninstall through Windows Apps & Features, and supports major upgrades through the stable MSI `UpgradeCode`.

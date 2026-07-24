@@ -11,30 +11,51 @@ public sealed class SettingsStore
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase
     };
 
+    private const int MaxBackupFiles = 5;
+
     public AppSettings Load()
+    {
+        return LoadWithStatus().Settings;
+    }
+
+    public SettingsLoadResult LoadWithStatus()
+    {
+        return LoadWithStatus(Paths.SettingsFilePath);
+    }
+
+    public SettingsLoadResult LoadWithStatus(string path)
     {
         try
         {
-            var path = Paths.SettingsFilePath;
             if (!File.Exists(path))
             {
-                return new AppSettings();
+                return new SettingsLoadResult
+                {
+                    Settings = new AppSettings()
+                };
             }
 
             var json = File.ReadAllText(path);
-            return Normalize(JsonSerializer.Deserialize<AppSettings>(json, JsonOptions) ?? new AppSettings());
+            return new SettingsLoadResult
+            {
+                Settings = Normalize(JsonSerializer.Deserialize<AppSettings>(json, JsonOptions) ?? new AppSettings())
+            };
         }
-        catch
+        catch (Exception ex)
         {
-            return new AppSettings();
+            BackupCorruptSettings(path);
+            return new SettingsLoadResult
+            {
+                Settings = new AppSettings(),
+                UsedFallbackSettings = true,
+                WarningMessage = $"Settings could not be loaded and were reset to defaults. {ex.Message}"
+            };
         }
     }
 
     public void Save(AppSettings settings)
     {
-        Directory.CreateDirectory(Paths.AppDataDirectory);
-        var json = JsonSerializer.Serialize(settings, JsonOptions);
-        File.WriteAllText(Paths.SettingsFilePath, json);
+        SaveTo(settings, Paths.SettingsFilePath);
     }
 
     public AppSettings LoadFrom(string path)
@@ -52,7 +73,7 @@ public sealed class SettingsStore
         }
 
         var json = JsonSerializer.Serialize(settings, JsonOptions);
-        File.WriteAllText(path, json);
+        WriteFileAtomically(path, json);
     }
 
     public void BackupCurrentSettings()
@@ -65,6 +86,7 @@ public sealed class SettingsStore
         Directory.CreateDirectory(Paths.AppDataDirectory);
         var backupPath = Path.Combine(Paths.AppDataDirectory, $"settings-backup-{DateTimeOffset.Now:yyyyMMddHHmmss}.json");
         File.Copy(Paths.SettingsFilePath, backupPath);
+        TrimBackupFiles("settings-backup-*.json");
     }
 
     private static AppSettings Normalize(AppSettings settings)
@@ -103,6 +125,77 @@ public sealed class SettingsStore
         if (string.Equals(appearance.ForegroundColor, "#F5F5F5", StringComparison.OrdinalIgnoreCase))
         {
             appearance.ForegroundColor = "#F2F2F2";
+        }
+    }
+
+    private static void WriteFileAtomically(string path, string contents)
+    {
+        var directory = Path.GetDirectoryName(path);
+        if (!string.IsNullOrWhiteSpace(directory))
+        {
+            Directory.CreateDirectory(directory);
+        }
+
+        var tempPath = $"{path}.{Guid.NewGuid():N}.tmp";
+        File.WriteAllText(tempPath, contents);
+
+        if (File.Exists(path))
+        {
+            var backupPath = $"{path}.bak";
+            File.Replace(tempPath, path, backupPath, ignoreMetadataErrors: true);
+            if (File.Exists(backupPath))
+            {
+                File.Delete(backupPath);
+            }
+        }
+        else
+        {
+            File.Move(tempPath, path);
+        }
+    }
+
+    private static void BackupCorruptSettings(string path)
+    {
+        try
+        {
+            if (!File.Exists(path))
+            {
+                return;
+            }
+
+            Directory.CreateDirectory(Paths.AppDataDirectory);
+            var backupPath = Path.Combine(Paths.AppDataDirectory, $"settings-corrupt-{DateTimeOffset.Now:yyyyMMddHHmmss}.json");
+            File.Copy(path, backupPath, overwrite: true);
+            TrimBackupFiles("settings-corrupt-*.json");
+        }
+        catch
+        {
+        }
+    }
+
+    private static void TrimBackupFiles(string pattern)
+    {
+        var directory = Paths.AppDataDirectory;
+        if (!Directory.Exists(directory))
+        {
+            return;
+        }
+
+        var backups = new DirectoryInfo(directory)
+            .EnumerateFiles(pattern)
+            .OrderByDescending(file => file.CreationTimeUtc)
+            .Skip(MaxBackupFiles)
+            .ToArray();
+
+        foreach (var backup in backups)
+        {
+            try
+            {
+                backup.Delete();
+            }
+            catch
+            {
+            }
         }
     }
 }

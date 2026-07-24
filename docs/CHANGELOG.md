@@ -2,6 +2,31 @@
 
 All notable changes to Bubbles CMD are documented here.
 
+## 0.0.4
+
+### Added
+
+- Added richer custom profile options including startup commands, tab title templates, icon glyph overrides, and per-profile environment overrides.
+- Added workspace persistence for saved startup-command metadata.
+- Added xUnit-based automated tests for settings recovery, command-search ranking, and core terminal/service behavior.
+- Added test-result upload and explicit release-artifact validation to the GitHub Actions workflow.
+
+### Changed
+
+- Updated terminal appearance application so foreground/background, selection, accent, cursor behavior, and line-height padding respond to saved settings.
+- Updated command discovery with in-memory caching, fuzzy search ranking, and richer command descriptions in the command browser.
+- Updated the command browser to show more command context and use the improved search behavior.
+- Simplified the top toolbar so primary actions stay visible while secondary actions move behind the command palette and shortcuts.
+- Refactored parts of the main-window workflow into focused helper services for workspace capture and command palette launching.
+- Hardened settings persistence with atomic saves, repaired-settings detection, and best-effort corruption backups.
+- Updated release, installer, script, workflow, and documentation version references to `0.0.4`.
+
+### Fixed
+
+- Wired live terminal output parsing into the app so bracketed paste mode, BEL notifications, and OSC title updates can flow into the UI.
+- Improved terminal search, selection export, and output save behavior so they better match what the UI advertises.
+- Replaced the custom executable-style test harness with a standard `dotnet test` workflow.
+
 ## 0.0.3
 
 ### Changed

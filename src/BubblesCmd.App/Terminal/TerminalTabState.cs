@@ -8,6 +8,7 @@ namespace BubblesCmd.App.Terminal;
 internal sealed class TerminalTabState
 {
     private Orientation _layoutOrientation = Orientation.Vertical;
+    private string _accentColor = "#58B9FF";
 
     public Grid PaneGrid { get; } = new();
 
@@ -25,7 +26,11 @@ internal sealed class TerminalTabState
 
     public bool IsPinned { get; set; }
 
+    public bool FollowsTerminalTitle { get; set; } = true;
+
     public bool IsPaneZoomed { get; private set; }
+
+    public string? StartupCommand { get; set; }
 
     public bool HasRunningSessions => Panes.Any(pane => pane.View.IsRunning);
 
@@ -116,9 +121,16 @@ internal sealed class TerminalTabState
         {
             item.View.BorderThickness = item == pane ? new Thickness(2) : new Thickness(1);
             item.View.BorderBrush = item == pane
-                ? new SolidColorBrush(Color.FromRgb(88, 185, 255))
+                ? new SolidColorBrush((Color)ColorConverter.ConvertFromString(_accentColor))
                 : new SolidColorBrush(Color.FromRgb(25, 38, 51));
         }
+    }
+
+    public void ApplyAccentColor(string accentColor)
+    {
+        _accentColor = string.IsNullOrWhiteSpace(accentColor) ? "#58B9FF" : accentColor;
+        SetActivePane(ActivePane);
+        RebuildPaneGrid();
     }
 
     public void DisposeSessions()
@@ -182,7 +194,7 @@ internal sealed class TerminalTabState
                         Width = 5,
                         HorizontalAlignment = HorizontalAlignment.Center,
                         VerticalAlignment = VerticalAlignment.Stretch,
-                        Background = new SolidColorBrush(Color.FromRgb(88, 185, 255))
+                        Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString(_accentColor))
                     };
                     Grid.SetColumn(splitter, (index * 2) - 1);
                     Grid.SetRow(splitter, 0);
@@ -216,7 +228,7 @@ internal sealed class TerminalTabState
                     Height = 5,
                     HorizontalAlignment = HorizontalAlignment.Stretch,
                     VerticalAlignment = VerticalAlignment.Center,
-                    Background = new SolidColorBrush(Color.FromRgb(88, 185, 255))
+                    Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString(_accentColor))
                 };
                 Grid.SetColumn(splitter, 0);
                 Grid.SetRow(splitter, (index * 2) - 1);

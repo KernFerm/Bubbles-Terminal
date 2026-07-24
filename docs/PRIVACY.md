@@ -46,4 +46,4 @@ Clipboard contents are only read when the user performs a paste action. Clipboar
 
 ## Updates
 
-Version `0.0.3` does not include automatic update checks.
+Version `0.0.4` does not include automatic update checks.

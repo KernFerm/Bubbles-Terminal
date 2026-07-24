@@ -6,6 +6,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using BubblesCmd.App.Dialogs;
+using BubblesCmd.App.Services;
 using BubblesCmd.App.Terminal;
 using BubblesCmd.Core.Models;
 using BubblesCmd.Core.Services;
@@ -15,20 +16,26 @@ namespace BubblesCmd.App;
 
 public partial class MainWindow : Window
 {
+    private const string OpenProfileArgument = "--open-profile";
+    private const string SkipRestoreArgument = "--skip-restore";
     private readonly SettingsStore _settingsStore = new();
     private readonly DiagnosticLogger _diagnosticLogger = new();
     private readonly ShellProfileDetector _profileDetector = new();
     private readonly CommandDiscoveryService _commandDiscoveryService = new();
     private readonly PasteSafetyAnalyzer _pasteSafetyAnalyzer = new();
+    private readonly WorkspaceService _workspaceService = new();
+    private readonly CommandPaletteService _commandPaletteService = new();
     private readonly List<TerminalTabState> _tabs = [];
     private readonly List<ClosedTabState> _recentlyClosedTabs = [];
     private AppSettings _settings = new();
     private IReadOnlyList<ShellProfile> _profiles = [];
     private IReadOnlyList<ProfileMenuItem> _profileMenuItems = [];
+    private readonly LaunchRequest _launchRequest;
     private bool _profileSelectionReady;
 
     public MainWindow()
     {
+        _launchRequest = LaunchRequest.Parse(Environment.GetCommandLineArgs().Skip(1));
         InitializeComponent();
         Loaded += OnLoaded;
         Closing += OnClosing;
@@ -39,16 +46,23 @@ public partial class MainWindow : Window
     {
         if (IsProcessElevated())
         {
-            Title = "Administrator: Bubbles CMD 0.0.3";
+            Title = "Administrator: Bubbles CMD 0.0.4";
             StatusTextBlock.Text = "Running as administrator.";
         }
 
-        _settings = _settingsStore.Load();
+        var loadResult = _settingsStore.LoadWithStatus();
+        _settings = loadResult.Settings;
         _diagnosticLogger.Enabled = _settings.DiagnosticLoggingEnabled;
         _diagnosticLogger.Info("app.loaded");
         _profiles = _profileDetector.DetectProfiles(_settings.CustomProfiles);
         _profileMenuItems = CreateProfileMenuItems(_profiles);
         ProfileComboBox.ItemsSource = _profileMenuItems;
+        UpdateAdministratorButtonState();
+
+        if (loadResult.UsedFallbackSettings && !string.IsNullOrWhiteSpace(loadResult.WarningMessage))
+        {
+            MessageBox.Show(this, loadResult.WarningMessage, "Settings Repaired", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
 
         if (_profiles.Count == 0)
         {
@@ -56,10 +70,20 @@ public partial class MainWindow : Window
             return;
         }
 
-        SelectProfileInMenu(_profiles.FirstOrDefault(profile => profile.Id == _settings.DefaultProfileId)
-            ?? _profiles.First());
+        var startupProfile = _profiles.FirstOrDefault(profile => profile.Id == _launchRequest.OpenProfileId)
+            ?? _profiles.FirstOrDefault(profile => profile.Id == _settings.DefaultProfileId)
+            ?? _profiles.First();
+        SelectProfileInMenu(startupProfile);
 
-        RestoreWorkspaceOrOpenDefault();
+        if (_launchRequest.SkipWorkspaceRestore)
+        {
+            OpenLaunchProfileOrDefault(startupProfile);
+        }
+        else
+        {
+            RestoreWorkspaceOrOpenDefault(startupProfile);
+        }
+
         _profileSelectionReady = true;
     }
 
@@ -92,6 +116,11 @@ public partial class MainWindow : Window
         {
             OpenNewTab(activeTab.Profile);
         }
+    }
+
+    private void RunAsAdminButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        RelaunchAsAdministratorForSelectedProfile();
     }
 
     private void RestartTabButton_OnClick(object sender, RoutedEventArgs e)
@@ -267,15 +296,7 @@ public partial class MainWindow : Window
             _settings.DefaultProfileId = profile.Id;
         }
 
-        _settings.LastWorkspace = _tabs
-            .Where(tab => tab.HasRunningSessions)
-            .Select(tab => new SavedTab
-            {
-                ProfileId = tab.Profile.Id,
-                Title = tab.Title,
-                IsPinned = tab.IsPinned
-            })
-            .ToList();
+        _settings.LastWorkspace = _workspaceService.CaptureWorkspace(_tabs);
         _settingsStore.Save(_settings);
         _diagnosticLogger.Info("app.closing", new Dictionary<string, string>
         {
@@ -337,6 +358,13 @@ public partial class MainWindow : Window
             return;
         }
 
+        if (Keyboard.Modifiers == (ModifierKeys.Control | ModifierKeys.Shift) && e.Key == Key.A)
+        {
+            RelaunchAsAdministratorForSelectedProfile();
+            e.Handled = true;
+            return;
+        }
+
         if (Keyboard.Modifiers == (ModifierKeys.Control | ModifierKeys.Shift) && e.Key == Key.S)
         {
             ShowSnippets();
@@ -388,6 +416,11 @@ public partial class MainWindow : Window
 
     private void OpenNewTab(ShellProfile profile)
     {
+        OpenNewTab(profile, null);
+    }
+
+    private void OpenNewTab(ShellProfile profile, string? startupCommand)
+    {
         var pane = CreatePane(profile);
         if (pane is null)
         {
@@ -396,13 +429,18 @@ public partial class MainWindow : Window
 
         var state = new TerminalTabState(pane)
         {
-            Title = profile.DisplayName
+            Title = FormatProfileTitle(profile)
         };
+        state.StartupCommand = startupCommand;
         HookPaneFocus(state, pane);
+        if (!string.IsNullOrWhiteSpace(startupCommand))
+        {
+            _ = pane.View.SendInputAsync(AppendCommandNewLine(startupCommand));
+        }
 
         var tab = new TabItem
         {
-            Header = profile.DisplayName,
+            Header = state.Title,
             Content = state.PaneGrid
         };
 
@@ -410,6 +448,8 @@ public partial class MainWindow : Window
         _tabs.Add(state);
         SessionTabControl.Items.Add(tab);
         SessionTabControl.SelectedItem = tab;
+        state.ApplyAccentColor(_settings.Appearance.AccentColor);
+        UpdateTabHeader(state);
         pane.View.FocusTerminal();
         StatusTextBlock.Text = $"Started {profile.DisplayName}.";
     }
@@ -427,16 +467,17 @@ public partial class MainWindow : Window
 
             if (result == MessageBoxResult.Yes)
             {
-                RestartApplicationAsAdministrator();
+                RestartApplicationAsAdministrator(profile.Id, skipWorkspaceRestore: !_settings.RestorePreviousWorkspace);
             }
 
             return null;
         }
 
         TerminalView terminalView;
+        var effectiveProfile = ResolveProfileForLaunch(profile);
         try
         {
-            terminalView = new TerminalView(profile);
+            terminalView = new TerminalView(effectiveProfile);
             terminalView.ApplyAppearance(_settings.Appearance);
         }
         catch (Exception ex)
@@ -449,10 +490,11 @@ public partial class MainWindow : Window
         _diagnosticLogger.Info("session.started", new Dictionary<string, string>
         {
             ["profileId"] = profile.Id,
-            ["administrator"] = IsProcessElevated().ToString()
+            ["administrator"] = IsProcessElevated().ToString(),
+            ["startingDirectory"] = effectiveProfile.StartingDirectory
         });
 
-        return new TerminalPaneState(profile, terminalView);
+        return new TerminalPaneState(effectiveProfile, terminalView);
     }
 
     private void CloseActiveTab()
@@ -632,8 +674,9 @@ public partial class MainWindow : Window
             return;
         }
 
-        StatusTextBlock.Text = activeTab.View.FindNext(SearchTextBox.Text)
-            ? $"Found '{SearchTextBox.Text}'."
+        var result = activeTab.View.FindNext(SearchTextBox.Text);
+        StatusTextBlock.Text = result.Found
+            ? $"Match {result.MatchNumber}/{result.MatchCount}: {result.Preview}"
             : $"No match for '{SearchTextBox.Text}'.";
     }
 
@@ -648,6 +691,7 @@ public partial class MainWindow : Window
                     OpenNewTab(profile);
                 }
             }),
+            new(IsProcessElevated() ? "Administrator mode is active" : "Restart as administrator", RelaunchAsAdministratorForSelectedProfile),
             new("Duplicate tab", () => DuplicateTabButton_OnClick(this, new RoutedEventArgs())),
             new("Rename tab", RenameActiveTab),
             new("Pin or unpin tab", TogglePinActiveTab),
@@ -685,11 +729,7 @@ public partial class MainWindow : Window
             new("About Bubbles CMD", ShowAbout)
         };
 
-        var dialog = new CommandPaletteWindow(commands) { Owner = this };
-        if (dialog.ShowDialog() == true)
-        {
-            dialog.SelectedCommand?.Execute();
-        }
+        _commandPaletteService.Show(this, commands);
     }
 
     private void ShowSnippets()
@@ -800,15 +840,7 @@ public partial class MainWindow : Window
 
     private void SaveWorkspace()
     {
-        _settings.LastWorkspace = _tabs
-            .Where(tab => tab.HasRunningSessions)
-            .Select(tab => new SavedTab
-            {
-                ProfileId = tab.Profile.Id,
-                Title = tab.Title,
-                IsPinned = tab.IsPinned
-            })
-            .ToList();
+        _settings.LastWorkspace = _workspaceService.CaptureWorkspace(_tabs);
         _settingsStore.Save(_settings);
         _diagnosticLogger.Info("workspace.saved", new Dictionary<string, string>
         {
@@ -914,7 +946,7 @@ public partial class MainWindow : Window
         });
     }
 
-    private void RestoreWorkspaceOrOpenDefault()
+    private void RestoreWorkspaceOrOpenDefault(ShellProfile startupProfile)
     {
         var restoredCount = 0;
 
@@ -928,13 +960,15 @@ public partial class MainWindow : Window
                     continue;
                 }
 
-                OpenNewTab(profile);
+                OpenNewTab(profile, savedTab.StartupCommand);
                 if (GetActiveTab() is { } restoredTab)
                 {
                     restoredTab.Title = string.IsNullOrWhiteSpace(savedTab.Title)
-                        ? profile.DisplayName
+                        ? FormatProfileTitle(profile)
                         : savedTab.Title;
                     restoredTab.IsPinned = savedTab.IsPinned;
+                    restoredTab.FollowsTerminalTitle = string.IsNullOrWhiteSpace(savedTab.Title) ||
+                        string.Equals(savedTab.Title, FormatProfileTitle(profile), StringComparison.Ordinal);
                     UpdateTabHeader(restoredTab);
                 }
 
@@ -944,10 +978,7 @@ public partial class MainWindow : Window
 
         if (restoredCount == 0)
         {
-            if (GetSelectedProfile() is { } profile)
-            {
-                OpenNewTab(profile);
-            }
+            OpenLaunchProfileOrDefault(startupProfile);
         }
     }
 
@@ -966,6 +997,7 @@ public partial class MainWindow : Window
     {
         foreach (var tab in _tabs)
         {
+            tab.ApplyAccentColor(_settings.Appearance.AccentColor);
             foreach (var pane in tab.Panes)
             {
                 pane.View.ApplyAppearance(_settings.Appearance);
@@ -1134,6 +1166,35 @@ public partial class MainWindow : Window
                 UpdateStatusFor(tab);
             }
         };
+        pane.View.TitleSuggested += (_, title) =>
+        {
+            if (!tab.FollowsTerminalTitle)
+            {
+                return;
+            }
+
+            Dispatcher.Invoke(() =>
+            {
+                tab.Title = title;
+                UpdateTabHeader(tab);
+                if (SessionTabControl.SelectedItem == tab.TabItem)
+                {
+                    StatusTextBlock.Text = $"Active title updated to '{title}'.";
+                }
+            });
+        };
+        pane.View.BellReceived += (_, bellCount) =>
+        {
+            Dispatcher.Invoke(() =>
+            {
+                if (SessionTabControl.SelectedItem == tab.TabItem)
+                {
+                    StatusTextBlock.Text = bellCount == 1
+                        ? $"Bell received from '{tab.Title}'."
+                        : $"{bellCount} bells received from '{tab.Title}'.";
+                }
+            });
+        };
     }
 
     private void RenameActiveTab()
@@ -1150,6 +1211,7 @@ public partial class MainWindow : Window
         }
 
         activeTab.Title = dialog.Value;
+        activeTab.FollowsTerminalTitle = false;
         UpdateTabHeader(activeTab);
         StatusTextBlock.Text = $"Renamed tab to '{activeTab.Title}'.";
     }
@@ -1217,6 +1279,7 @@ public partial class MainWindow : Window
         {
             reopenedTab.Title = closedTab.Title;
             reopenedTab.IsPinned = closedTab.WasPinned;
+            reopenedTab.FollowsTerminalTitle = false;
             UpdateTabHeader(reopenedTab);
             StatusTextBlock.Text = $"Reopened '{reopenedTab.Title}'.";
         }
@@ -1293,7 +1356,41 @@ public partial class MainWindow : Window
         return principal.IsInRole(WindowsBuiltInRole.Administrator);
     }
 
-    private static void RestartApplicationAsAdministrator()
+    private void RelaunchAsAdministratorForSelectedProfile()
+    {
+        if (IsProcessElevated())
+        {
+            StatusTextBlock.Text = "Already running as administrator. New shells from this window already open in real administrator mode.";
+            return;
+        }
+
+        var profile = GetSelectedProfile();
+        if (profile is not null)
+        {
+            _settings.DefaultProfileId = profile.Id;
+        }
+
+        _settings.LastWorkspace = _workspaceService.CaptureWorkspace(_tabs);
+        _settingsStore.Save(_settings);
+
+        RestartApplicationAsAdministrator(profile?.Id, skipWorkspaceRestore: !_settings.RestorePreviousWorkspace);
+        StatusTextBlock.Text = "Requested administrator restart.";
+    }
+
+    private void OpenLaunchProfileOrDefault(ShellProfile startupProfile)
+    {
+        OpenNewTab(startupProfile);
+    }
+
+    private void UpdateAdministratorButtonState()
+    {
+        RunAsAdminButton.Content = IsProcessElevated() ? "Admin Active" : "Run As Admin";
+        RunAsAdminButton.ToolTip = IsProcessElevated()
+            ? "This window is already elevated. New shells from it run with administrator rights."
+            : "Restart Bubbles CMD as administrator so hosted shells run in real administrator mode.";
+    }
+
+    private static void RestartApplicationAsAdministrator(string? profileId = null, bool skipWorkspaceRestore = false)
     {
         var exePath = Environment.ProcessPath;
         if (string.IsNullOrWhiteSpace(exePath))
@@ -1301,12 +1398,119 @@ public partial class MainWindow : Window
             return;
         }
 
+        var arguments = BuildAdministratorRestartArguments(profileId, skipWorkspaceRestore);
+
         Process.Start(new ProcessStartInfo
         {
             FileName = exePath,
+            Arguments = arguments,
             UseShellExecute = true,
             Verb = "runas"
         });
+    }
+
+    private static string BuildAdministratorRestartArguments(string? profileId, bool skipWorkspaceRestore)
+    {
+        var arguments = new List<string>();
+        if (skipWorkspaceRestore)
+        {
+            arguments.Add(SkipRestoreArgument);
+        }
+
+        if (!string.IsNullOrWhiteSpace(profileId))
+        {
+            arguments.Add(OpenProfileArgument);
+            arguments.Add($"\"{profileId}\"");
+        }
+
+        return string.Join(" ", arguments);
+    }
+
+    private static string AppendCommandNewLine(string command)
+    {
+        return command.EndsWith("\n", StringComparison.Ordinal) || command.EndsWith("\r", StringComparison.Ordinal)
+            ? command
+            : command + Environment.NewLine;
+    }
+
+    private static string FormatProfileTitle(ShellProfile profile)
+    {
+        if (!string.IsNullOrWhiteSpace(profile.TabTitleTemplate))
+        {
+            return profile.TabTitleTemplate!
+                .Replace("{name}", profile.DisplayName, StringComparison.OrdinalIgnoreCase)
+                .Replace("{profile}", profile.Id, StringComparison.OrdinalIgnoreCase);
+        }
+
+        return profile.DisplayName;
+    }
+
+    private static ShellProfile ResolveProfileForLaunch(ShellProfile profile)
+    {
+        if (!IsProcessElevated() || !ShouldUseAdministratorStartingDirectory(profile))
+        {
+            return profile;
+        }
+
+        return profile with
+        {
+            StartingDirectory = Environment.GetFolderPath(Environment.SpecialFolder.System)
+        };
+    }
+
+    private static bool ShouldUseAdministratorStartingDirectory(ShellProfile profile)
+    {
+        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        if (!string.Equals(profile.StartingDirectory, home, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var executableName = Path.GetFileName(profile.ExecutablePath);
+        if (executableName.Equals("cmd.exe", StringComparison.OrdinalIgnoreCase) ||
+            executableName.Equals("powershell.exe", StringComparison.OrdinalIgnoreCase) ||
+            executableName.Equals("pwsh.exe", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        return profile.Id.Equals("azure-cloud-shell", StringComparison.OrdinalIgnoreCase) ||
+            profile.Id.StartsWith("vs-devcmd-", StringComparison.OrdinalIgnoreCase) ||
+            profile.Id.StartsWith("vs-devps-", StringComparison.OrdinalIgnoreCase);
+    }
+}
+
+internal sealed record LaunchRequest(string? OpenProfileId, bool SkipWorkspaceRestore)
+{
+    private const string OpenProfileArgumentName = "--open-profile";
+    private const string SkipRestoreArgumentName = "--skip-restore";
+
+    public static LaunchRequest Parse(IEnumerable<string> args)
+    {
+        string? openProfileId = null;
+        var skipWorkspaceRestore = false;
+        using var enumerator = args.GetEnumerator();
+
+        while (enumerator.MoveNext())
+        {
+            var argument = enumerator.Current;
+            if (string.Equals(argument, OpenProfileArgumentName, StringComparison.OrdinalIgnoreCase))
+            {
+                if (enumerator.MoveNext())
+                {
+                    openProfileId = enumerator.Current;
+                }
+
+                continue;
+            }
+
+            if (string.Equals(argument, SkipRestoreArgumentName, StringComparison.OrdinalIgnoreCase))
+            {
+                skipWorkspaceRestore = true;
+            }
+        }
+
+        return new LaunchRequest(openProfileId, skipWorkspaceRestore);
     }
 }
 

@@ -2,11 +2,13 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using BubblesCmd.Core.Models;
+using BubblesCmd.Core.Services;
 
 namespace BubblesCmd.App.Dialogs;
 
 internal sealed class CommandsWindow : Window
 {
+    private readonly CommandDiscoveryService _discoveryService = new();
     private readonly TextBox _searchBox = new();
     private readonly ListView _commandsList = new();
     private readonly IReadOnlyList<DiscoveredCommand> _commands;
@@ -38,7 +40,8 @@ internal sealed class CommandsWindow : Window
             {
                 CreateColumn("Command", nameof(DiscoveredCommand.Name), 190),
                 CreateColumn("Kind", nameof(DiscoveredCommand.CommandType), 130),
-                CreateColumn("Source", nameof(DiscoveredCommand.Source), 390)
+                CreateColumn("Source", nameof(DiscoveredCommand.Source), 260),
+                CreateColumn("Details", nameof(DiscoveredCommand.Description), 220)
             }
         };
         _commandsList.MouseDoubleClick += (_, _) => Accept();
@@ -65,13 +68,7 @@ internal sealed class CommandsWindow : Window
     private void RefreshList()
     {
         var search = _searchBox.Text.Trim();
-        var filtered = _commands
-            .Where(command =>
-                string.IsNullOrWhiteSpace(search) ||
-                command.Name.Contains(search, StringComparison.OrdinalIgnoreCase) ||
-                command.CommandType.Contains(search, StringComparison.OrdinalIgnoreCase) ||
-                command.Source.Contains(search, StringComparison.OrdinalIgnoreCase))
-            .Take(250)
+        var filtered = _discoveryService.SearchCommands(_commands, search)
             .ToList();
 
         _commandsList.ItemsSource = filtered;

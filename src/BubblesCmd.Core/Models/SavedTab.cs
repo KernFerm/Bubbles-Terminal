@@ -7,4 +7,6 @@ public sealed class SavedTab
     public string? Title { get; set; }
 
     public bool IsPinned { get; set; }
+
+    public string? StartupCommand { get; set; }
 }
