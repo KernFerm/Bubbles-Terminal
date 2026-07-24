@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package
+    Name="Bubbles CMD"
+    Manufacturer="BubblesTheDev"
+    Version="0.0.2"
+    UpgradeCode="33C164F7-6F73-4FA7-B6E9-5202E69A43F7"
+    Scope="perUser">
+
+    <SummaryInformation Description="Bubbles CMD terminal application installer" Manufacturer="BubblesTheDev" />
+    <MajorUpgrade DowngradeErrorMessage="A newer version of Bubbles CMD is already installed." />
+    <MediaTemplate EmbedCab="yes" />
+
+    <Feature Id="MainFeature" Title="Bubbles CMD" Level="1">
+      <ComponentGroupRef Id="AppComponents" />
+      <ComponentRef Id="StartMenuShortcutComponent" />
+      <ComponentRef Id="DesktopShortcutComponent" />
+    </Feature>
+  </Package>
+
+  <Fragment>
+    <StandardDirectory Id="LocalAppDataFolder">
+      <Directory Id="ProgramsInstallFolder" Name="Programs">
+        <Directory Id="INSTALLFOLDER" Name="Bubbles CMD" />
+      </Directory>
+    </StandardDirectory>
+
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="ApplicationProgramsFolder" Name="Bubbles CMD" />
+    </StandardDirectory>
+
+    <StandardDirectory Id="DesktopFolder">
+      <Component Id="DesktopShortcutComponent" Guid="B7E2F936-729F-4D7E-BE00-A78375426206">
+        <Shortcut
+          Id="DesktopShortcut"
+          Name="Bubbles CMD"
+          Description="Launch Bubbles CMD"
+          Target="[INSTALLFOLDER]BubblesCmd.App.exe"
+          WorkingDirectory="INSTALLFOLDER"
+          Icon="BubblesIcon" />
+        <RegistryValue Root="HKCU" Key="Software\BubblesTheDev\Bubbles CMD" Name="DesktopShortcut" Type="integer" Value="1" KeyPath="yes" />
+      </Component>
+    </StandardDirectory>
+  </Fragment>
+
+  <Fragment>
+    <DirectoryRef Id="ApplicationProgramsFolder">
+      <Component Id="StartMenuShortcutComponent" Guid="A670347A-23EC-4D96-903D-190D92757DAE">
+        <Shortcut
+          Id="StartMenuShortcut"
+          Name="Bubbles CMD"
+          Description="Launch Bubbles CMD"
+          Target="[INSTALLFOLDER]BubblesCmd.App.exe"
+          WorkingDirectory="INSTALLFOLDER"
+          Icon="BubblesIcon" />
+        <RemoveFolder Id="RemoveApplicationProgramsFolder" On="uninstall" />
+        <RegistryValue Root="HKCU" Key="Software\BubblesTheDev\Bubbles CMD" Name="StartMenuShortcut" Type="integer" Value="1" KeyPath="yes" />
+      </Component>
+    </DirectoryRef>
+
+    <Icon Id="BubblesIcon" SourceFile="..\..\src\BubblesCmd.App\Assets\bubbles.ico" />
+  </Fragment>
+</Wix>

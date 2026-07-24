@@ -1,0 +1,14 @@
+<Project Sdk="WixToolset.Sdk/5.0.2">
+  <PropertyGroup>
+    <OutputName>bubbles-cmd-0.0.2-win-x64</OutputName>
+    <OutputType>Package</OutputType>
+    <Platform>x64</Platform>
+    <Cultures>en-US</Cultures>
+    <SuppressValidation>true</SuppressValidation>
+    <IntermediateOutputPath>..\..\artifacts\installer\obj\</IntermediateOutputPath>
+    <OutputPath>..\..\artifacts\installer\</OutputPath>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\..\artifacts\installer\obj\AppFiles.generated.wxs" />
+  </ItemGroup>
+</Project>
