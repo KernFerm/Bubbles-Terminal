@@ -39,7 +39,7 @@ public partial class MainWindow : Window
     {
         if (IsProcessElevated())
         {
-            Title = "Administrator: Bubbles CMD 0.0.2";
+            Title = "Administrator: Bubbles CMD 0.0.3";
             StatusTextBlock.Text = "Running as administrator.";
         }
 

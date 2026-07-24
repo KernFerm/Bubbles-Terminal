@@ -1,6 +1,6 @@
 <Project Sdk="WixToolset.Sdk/5.0.2">
   <PropertyGroup>
-    <OutputName>bubbles-cmd-0.0.2-win-x64</OutputName>
+    <OutputName>bubbles-cmd-0.0.3-win-x64</OutputName>
     <OutputType>Package</OutputType>
     <Platform>x64</Platform>
     <Cultures>en-US</Cultures>

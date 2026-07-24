@@ -1,6 +1,6 @@
 # Bubbles CMD Builder Guide
 
-Version: `0.0.2`
+Version: `0.0.3`
 
 Author: `BubblesTheDev`
 
@@ -17,7 +17,7 @@ It launches real installed shell processes. It does not reimplement shell comman
 The public release asset for regular users is:
 
 ```text
-bubbles-cmd-0.0.2-win-x64.msi
+bubbles-cmd-0.0.3-win-x64.msi
 ```
 
 The MSI installs per-user, creates shortcuts, supports uninstall through Windows Apps & Features, and installs under the user-local Programs folder.
@@ -25,7 +25,7 @@ The MSI installs per-user, creates shortcuts, supports uninstall through Windows
 The ZIP package is mainly for developers or portable testing:
 
 ```text
-bubbles-cmd-0.0.2-win-x64.zip
+bubbles-cmd-0.0.3-win-x64.zip
 ```
 
 Do not commit MSI, ZIP, publish folders, build folders, NuGet caches, or local planning notes to git.
@@ -62,7 +62,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\package.ps1
 Output:
 
 ```text
-artifacts\packages\bubbles-cmd-0.0.2-win-x64.zip
+artifacts\packages\bubbles-cmd-0.0.3-win-x64.zip
 ```
 
 ## Build MSI
@@ -74,7 +74,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-msi.ps1
 Output:
 
 ```text
-artifacts\installer\bubbles-cmd-0.0.2-win-x64.msi
+artifacts\installer\bubbles-cmd-0.0.3-win-x64.msi
 ```
 
 The WiX build generates an app-file manifest under `artifacts\installer\obj`. That generated file can contain machine-local source paths and is intentionally ignored.
@@ -126,6 +126,6 @@ Use this checklist to manually verify interactive programs such as `cmd`, PowerS
 
 ## Current Scope
 
-`0.0.2` is a working MVP foundation. It includes real shell hosting, a Windows Terminal-backed terminal surface, profile detection, tabs, panes, settings, snippets, command discovery, safety prompts, ZIP packaging, MSI packaging, and tests.
+`0.0.3` is a working MVP foundation. It includes real shell hosting, a Windows Terminal-backed terminal surface, profile detection, tabs, panes, settings, snippets, command discovery, safety prompts, ZIP packaging, MSI packaging, and tests.
 
 Future work includes signed releases, deeper elevated ConPTY support, richer nested pane layouts, plugin execution, and additional terminal customization.

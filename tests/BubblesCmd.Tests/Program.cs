@@ -349,7 +349,7 @@ static void TestPluginManifestValidation()
     var manifest = new PluginManifest
     {
         Name = "Theme Pack",
-        Version = "0.0.2",
+        Version = "0.0.3",
         Permissions = ["themes", ""]
     };
 

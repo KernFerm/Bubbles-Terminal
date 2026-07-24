@@ -4,7 +4,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
-$publishDir = Join-Path $repoRoot "artifacts\publish\bubbles-cmd-0.0.2-win-x64"
+$publishDir = Join-Path $repoRoot "artifacts\publish\bubbles-cmd-0.0.3-win-x64"
 $installDir = Join-Path $env:LOCALAPPDATA "Programs\Bubbles CMD"
 $exePath = Join-Path $installDir "BubblesCmd.App.exe"
 $iconPath = Join-Path $installDir "Assets\bubbles.ico"

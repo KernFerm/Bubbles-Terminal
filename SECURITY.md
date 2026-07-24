@@ -4,7 +4,7 @@
 
 | Version | Supported |
 | --- | --- |
-| 0.0.2 | Yes |
+| 0.0.3 | Yes |
 
 ## Reporting A Vulnerability
 
@@ -29,8 +29,8 @@ Bubbles CMD:
 
 ## Administrator Sessions
 
-Administrator profile support is planned, but version `0.0.2` does not silently elevate or reuse elevated tokens.
+Administrator profile support is planned, but version `0.0.3` does not silently elevate or reuse elevated tokens.
 
 ## Plugin Runtime
 
-Plugin manifest/catalog validation exists as scaffolding. Plugin execution is not enabled in version `0.0.2`.
+Plugin manifest/catalog validation exists as scaffolding. Plugin execution is not enabled in version `0.0.3`.

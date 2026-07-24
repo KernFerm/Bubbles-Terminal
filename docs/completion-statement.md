@@ -1,8 +1,8 @@
 # Completion Statement
 
-`do.md` describes the target product for Bubbles CMD. Version `0.0.2` is complete as a buildable MVP foundation, not as a finished Windows Terminal replacement.
+`do.md` describes the target product for Bubbles CMD. Version `0.0.3` is complete as a buildable MVP foundation, not as a finished Windows Terminal replacement.
 
-## Complete In 0.0.2
+## Complete In 0.0.3
 
 - Native Windows WPF app.
 - Versioned assemblies and app metadata.

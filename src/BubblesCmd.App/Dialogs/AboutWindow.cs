@@ -19,7 +19,7 @@ internal sealed class AboutWindow : Window
 
         var version = Assembly.GetExecutingAssembly()
             .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
-            .InformationalVersion ?? "0.0.2";
+            .InformationalVersion ?? "0.0.3";
 
         var panel = new StackPanel { Margin = new Thickness(18) };
         panel.Background = DialogTheme.Background;

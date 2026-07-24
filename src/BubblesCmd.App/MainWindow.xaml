@@ -4,7 +4,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
-        Title="Bubbles CMD 0.0.2"
+        Title="Bubbles CMD 0.0.3"
         Height="820"
         Width="1320"
         MinHeight="640"

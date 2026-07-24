@@ -1,6 +1,6 @@
 # Bubbles CMD
 
-Version: `0.0.2`
+Version: `0.0.3`
 
 Author: `BubblesTheDev`
 
@@ -13,7 +13,7 @@ Bubbles CMD is a modern Windows terminal app that opens real installed shells in
 Most users should download the MSI installer from the GitHub Releases page:
 
 ```text
-bubbles-cmd-0.0.2-win-x64.msi
+bubbles-cmd-0.0.3-win-x64.msi
 ```
 
 Install it by double-clicking the MSI, then open Bubbles CMD from the Start Menu or Desktop shortcut.
@@ -84,8 +84,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-msi.ps1
 Generated release files are local artifacts and should not be committed:
 
 ```text
-artifacts\packages\bubbles-cmd-0.0.2-win-x64.zip
-artifacts\installer\bubbles-cmd-0.0.2-win-x64.msi
+artifacts\packages\bubbles-cmd-0.0.3-win-x64.zip
+artifacts\installer\bubbles-cmd-0.0.3-win-x64.msi
 ```
 
 ## Documentation

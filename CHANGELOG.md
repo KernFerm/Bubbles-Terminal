@@ -2,6 +2,16 @@
 
 All notable changes to Bubbles CMD are documented here.
 
+## 0.0.3
+
+### Changed
+
+- Updated application, assembly, installer, README, privacy, and security metadata to version `0.0.3`.
+
+### Fixed
+
+- Improved terminal shutdown so closing tabs, panes, or the app kills the owned shell process tree before disconnecting the terminal surface.
+
 ## 0.0.2
 
 ### Changed

@@ -144,9 +144,28 @@ internal sealed class TerminalView : Border, IDisposable
             return;
         }
 
-        _terminalControl.DisconnectConPTYTerm();
-        _isRunning = false;
-        ExitCode = null;
+        try
+        {
+            var term = _terminalControl.ConPTYTerm;
+            if (term is not null)
+            {
+                if (!term.Process.HasExited)
+                {
+                    term.Process.Kill(true);
+                }
+
+                term.StopExternalTermOnly();
+            }
+        }
+        catch
+        {
+        }
+        finally
+        {
+            _terminalControl.DisconnectConPTYTerm();
+            _isRunning = false;
+            ExitCode = null;
+        }
     }
 
     public void Dispose()
@@ -158,6 +177,10 @@ internal sealed class TerminalView : Border, IDisposable
 
         _disposed = true;
         Terminate();
+        if (_terminalControl is IDisposable disposableControl)
+        {
+            disposableControl.Dispose();
+        }
     }
 
     private void OnDragEnter(object sender, DragEventArgs e)

@@ -1,4 +1,4 @@
-# Bubbles CMD 0.0.2
+# Bubbles CMD 0.0.3
 
 Initial buildable MVP release by `BubblesTheDev`.
 

@@ -1,4 +1,4 @@
-# Bubbles CMD 0.0.2 Release
+# Bubbles CMD 0.0.3 Release
 
 Thank you for trying Bubbles CMD. This release is a Windows installer package for end users.
 
@@ -7,14 +7,14 @@ Thank you for trying Bubbles CMD. This release is a Windows installer package fo
 Download the MSI installer from the GitHub release assets:
 
 ```text
-bubbles-cmd-0.0.2-win-x64.msi
+bubbles-cmd-0.0.3-win-x64.msi
 ```
 
 Do not download source code unless you are a developer who wants to build the app manually.
 
 ## Install
 
-1. Download `bubbles-cmd-0.0.2-win-x64.msi`.
+1. Download `bubbles-cmd-0.0.3-win-x64.msi`.
 2. Double-click the MSI file.
 3. Follow the installer prompts.
 4. Open Bubbles CMD from the Start Menu or Desktop shortcut.
@@ -59,7 +59,8 @@ You can also uninstall from Control Panel if your Windows version shows MSI apps
 
 ## Troubleshooting
 
-- If a shell opens in the wrong folder, update to version `0.0.2` or newer.
+- If a shell opens in the wrong folder, update to version `0.0.3` or newer.
+- If Bubbles CMD feels slow after closing, update to version `0.0.3` or newer so terminal child processes are cleaned up more aggressively.
 - If Git Bash is missing, install Git for Windows and restart Bubbles CMD.
 - If Azure Cloud Shell is missing, install Azure CLI and restart Bubbles CMD.
 - If Visual Studio developer profiles are missing, install Visual Studio 2022 with C++ or developer command tools.
@@ -76,12 +77,11 @@ Settings and optional diagnostics stay on your computer.
 End users should download:
 
 ```text
-bubbles-cmd-0.0.2-win-x64.msi
+bubbles-cmd-0.0.3-win-x64.msi
 ```
 
 Developers may also download:
 
 ```text
-bubbles-cmd-0.0.2-win-x64.zip
+bubbles-cmd-0.0.3-win-x64.zip
 ```
-
